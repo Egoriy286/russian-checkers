@@ -3,13 +3,13 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType } from 'vue';
+import { defineComponent, type PropType } from 'vue';
 
 export default defineComponent({
   name: 'Checker',
   props: {
     color: {
-      type: String as PropType<"white" | "black" | "empty">,
+      type: String as PropType<"white" | "black" | undefined>,
       required: true,
     },
     king: {

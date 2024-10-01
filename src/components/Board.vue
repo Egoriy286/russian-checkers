@@ -163,7 +163,7 @@ export default defineComponent({
                 'A2', 'B2', 'C2', 'D2', 'E2', 'F2', 'G2', 'H2',
                 'A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'H1',
             ]),
-            checkersMap: reactive(new Map<number, { color: 'black' | 'white'; king: boolean } | null>()),
+            checkersMap: reactive(new Map<number, { color: 'black' | 'white'; king: boolean } | null | undefined>()),
             //currentPlayer: ref<'black' | 'white'>('black'), // Хранит текущего игрока
             logs: ref<string[]>([]) // Логи для отображения
           }        
@@ -240,7 +240,7 @@ export default defineComponent({
                 this.addLog(`Игрок '${board.currentPlayer}' переместил шашку с ${this.getBoxTitle(fromIndex)} на ${this.getBoxTitle(toIndex)}.`);
 
                 // Снимаем выделение
-                this.selectedChecker(0);
+                board.setSelectedChecker(0)
 
                 // Меняем игрока
                 board.setCurrentPlayer( board.getCurrentPlayer() === 'black' ? 'white' : 'black');
