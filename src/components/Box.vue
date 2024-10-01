@@ -27,7 +27,7 @@ export default defineComponent({
   height: 100%;
 }
 
-.black {
+.white {
   background-color: #f0d9b5;
 }
 

@@ -304,13 +304,14 @@ export default defineComponent({
   
   <style scoped>
   .checkers-board{
+    margin: 20px ;
     position: relative;
     display: flex;
     justify-content: center;
     align-items: center;
-    width: calc(100% + 10px);
-    max-width: 1500px;
-    min-width: 500px;
+    width: calc(80% + 10px);
+    max-width: 1200px;
+    min-width: 100px;
     aspect-ratio: 1 / 1;
     flex-shrink: 0;
     background: #FAEEB9;
@@ -332,7 +333,7 @@ export default defineComponent({
     border: 2px solid red;
   } 
   .logs {
-  width: 30%;
+  width: 80%;
   background-color: #f0f0f0;
   }
   </style>
