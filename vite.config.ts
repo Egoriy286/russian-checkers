@@ -12,5 +12,21 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
+  },
+  server: {
+    host: '0.0.0.0',
+    port: 3000,
+    //proxy: {
+    //  '/api': {
+    //    target: 'http://localhost:8080',
+    //    changeOrigin: true,
+    //    rewrite: (path) => path.replace(/^\/api/, ''),
+    //  },
+    //},
   }
+  
 })
+function viteServerProxy(arg0: { target: string }): import("vite").PluginOption {
+  throw new Error('Function not implemented.')
+}
+
