@@ -1,10 +1,26 @@
 <template>
+    <div class="checkers-board-container">
     <div class="checkers-board">
       <div class="checkers-grid">
-        <Box v-for="(box, index) in boxesTitle" :key="index" :theme="toggleTheme(index)">  {{ box }} 
-        <Checker v-if="checkersMap.get(index)" :color="checkersMap.get(index)?.color" :king="checkersMap.get(index)?.king" /></Box>
+        <!-- Отображение клеток и шашек -->
+        <Box v-for="(box, index) in boxesTitle" :key="index" :theme="toggleTheme(index)" @click="moveChecker(index)">
+          <!-- Если шашка существует, показываем ее и даем возможность выбрать -->
+          <Checker v-if="checkersMap.get(index)"
+                   :color="checkersMap.get(index)?.color"
+                   :king="checkersMap.get(index)?.king"
+                   @click.stop="selectChecker(index)" 
+                   :class="{ selected: selectedChecker() === index }" />
+        </Box>
       </div>
     </div>
+
+    <div class="logs">
+      <h2>Логи игры</h2>
+      <ul>
+        <li v-for="(log, index) in logs" :key="index">{{ log }}</li>
+      </ul>
+    </div>
+  </div>
 </template>
 
 
@@ -57,12 +73,37 @@ interface IBoard {
 // Класс для доски
 class Board implements IBoard {
   grid: (Checker | null)[][];
-
+  currentPlayer = 1; // 1 - белые, -1 - черные
+  selectedChecker = 0;
   constructor() {
     // Создаем 8x8 сетку, изначально пустую
     this.grid = Array(8)
       .fill(null)
       .map(() => Array(8).fill(null));
+  }
+  getCurrentPlayer(): String{
+    return this.currentPlayer === 1 ? 'white' : 'black';
+  }
+  setCurrentPlayer(color: String){
+    if (color ==="white"){
+      this.currentPlayer = 1;
+    }
+    else if(color ==="black"){
+      this.currentPlayer *= -1;
+    }
+    else 
+    {
+      console.log(color);
+    }
+    
+  }
+
+  getSelectedChecker(): number{
+    return this.selectedChecker;
+  }
+
+  setSelectedChecker(index: number): void {
+    this.selectedChecker = index;
   }
 
   initialize(): void {
@@ -122,8 +163,10 @@ export default defineComponent({
                 'A2', 'B2', 'C2', 'D2', 'E2', 'F2', 'G2', 'H2',
                 'A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'H1',
             ]),
-            checkersMap: reactive(new Map<number, { color: 'dark' | 'light'; king: boolean } | null>())
-        }        
+            checkersMap: reactive(new Map<number, { color: 'black' | 'white'; king: boolean } | null>()),
+            //currentPlayer: ref<'black' | 'white'>('black'), // Хранит текущего игрока
+            logs: ref<string[]>([]) // Логи для отображения
+          }        
     },
     methods:{
         toggleTheme(index: number){
@@ -134,7 +177,10 @@ export default defineComponent({
             {
                 return 'white'
             } 
-            return 'dark'
+            return 'black'
+        },
+        selectedChecker() : number {
+          return board.getSelectedChecker()
         },
         // Инициализация шашек на доске
         initCheckersMap() {
@@ -147,19 +193,101 @@ export default defineComponent({
             for (let i = 0; i < 3; i++) {
                 for (let j = 0; j < BoardSize; j++) {
                     if ((i + j) % 2 === 1) {
-                        this.checkersMap.set(i * BoardSize + j, { color: 'dark', king: false });
+                        this.checkersMap.set(i * BoardSize + j, { color: 'black', king: false });
                     }
                 }
             }
-
+            console.log('Инициализация шашек для игрока 1 (темные шашки)')
             // Инициализация шашек для игрока 2 (светлые шашки)
             for (let i = 5; i < 8; i++) {
                 for (let j = 0; j < BoardSize; j++) {
                     if ((i + j) % 2 === 1) {
-                        this.checkersMap.set(i * BoardSize + j, { color: 'light', king: false });
+                        this.checkersMap.set(i * BoardSize + j, { color: 'white', king: false });
                     }
                 }
             }
+            console.log('Инициализация шашек для игрока 2 (светлые шашки)')
+            this.addLog(`Игра началась. Игрок ${board.getCurrentPlayer()} начинает.`);
+        },
+        // Логика выбора шашки
+        selectChecker(index: number) {
+            const checker = this.checkersMap.get(index);
+            if (checker && checker.color === board.getCurrentPlayer()) {
+                // Если шашка принадлежит текущему игроку, то ее можно выбрать
+                board.setSelectedChecker(index);
+                this.addLog(`Игрок '${board.getCurrentPlayer()}' выбрал шашку на позиции ${this.getBoxTitle(index)}`);
+            }else if (checker) {
+                this.addLog(`Шашка игрока '${checker.color}' не принадлежит текущему игроку.`);
+            }
+        },
+
+        // Логика перемещения шашки
+        moveChecker(toIndex: number) {
+            const fromIndex = board.getSelectedChecker();
+
+            if (fromIndex === null) {
+                this.addLog("Сначала выберите шашку.");
+                return; // Прекращаем выполнение, если шашка не выбрана
+            }
+
+            if (fromIndex !== null && this.isValidMove(fromIndex, toIndex)) {
+                const checker = this.checkersMap.get(fromIndex);
+
+                // Перемещаем шашку на новое место
+                this.checkersMap.set(toIndex, checker);
+                this.checkersMap.set(fromIndex, null);
+
+                this.addLog(`Игрок '${board.currentPlayer}' переместил шашку с ${this.getBoxTitle(fromIndex)} на ${this.getBoxTitle(toIndex)}.`);
+
+                // Снимаем выделение
+                this.selectedChecker(0);
+
+                // Меняем игрока
+                board.setCurrentPlayer( board.getCurrentPlayer() === 'black' ? 'white' : 'black');
+                this.addLog(`Теперь ходит игрок '${board.currentPlayer}'.`);
+            }else if (fromIndex !== null) {
+                this.addLog("Невалидный ход.");
+            }
+        },
+        // Проверка валидности хода
+        isValidMove(fromIndex: number, toIndex: number): boolean {
+            const BoardSize = 8;
+            const fromRow = Math.floor(fromIndex / BoardSize);
+            const fromCol = fromIndex % BoardSize;
+            const toRow = Math.floor(toIndex / BoardSize);
+            const toCol = toIndex % BoardSize;
+
+            // Проверяем, что целевая клетка пуста
+            if (this.checkersMap.get(toIndex) !== null) {
+                return false;
+            }
+
+            const checker = this.checkersMap.get(fromIndex);
+            if (!checker) return false;
+
+            const isKing = checker.king;
+
+            // Для обычной шашки проверяем, что ход происходит на одну клетку по диагонали
+            if (!isKing) {
+                const rowDifference = checker.color === 'black' ? toRow - fromRow : fromRow - toRow;
+                const colDifference = Math.abs(toCol - fromCol);
+                if (rowDifference === 1 && colDifference === 1) {
+                    return true;
+                }
+            }
+
+            // TODO: Добавить логику для дамок и прыжков через другие шашки
+            
+            return false;
+        },
+        // Получаем название клетки (A8, B7 и т.д.)
+        getBoxTitle(index: number) {
+            return this.boxesTitle[index];
+        },
+        // Метод для добавления логов
+        addLog(message: string) {
+            this.logs.push(message);
+            console.log(message); // Для вывода в консоль
         }
     },
     mounted() {
@@ -200,6 +328,12 @@ export default defineComponent({
     margin: 0;
     background-color: #87ceeb;
   }
-  
+  .selected {
+    border: 2px solid red;
+  } 
+  .logs {
+  width: 30%;
+  background-color: #f0f0f0;
+  }
   </style>
   
