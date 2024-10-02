@@ -1,7 +1,10 @@
 <template>
-  <div :class="['box', theme]">
-    <slot></slot>
+  <div :class="['box', theme]" >
+    <slot> <div v-if="validBox" class="valid-move">
+
+    </div></slot>
   </div>
+  
 </template>
 
 <script lang="ts">
@@ -13,6 +16,10 @@ export default defineComponent({
     theme: {
       type: String,
       required: true
+    },
+    validBox:{
+      type: Boolean,
+      required: false,
     }
   }
 });
@@ -34,4 +41,10 @@ export default defineComponent({
 .black {
   background-color: #b58863;
 }
+
+.valid-move {
+  width: 30px;
+  height: 30px;
+  background-color: rgba(0, 255, 0, 0.3);
+  }
 </style>

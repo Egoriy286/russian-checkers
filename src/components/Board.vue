@@ -3,7 +3,7 @@
     <div class="checkers-board">
       <div class="checkers-grid">
         <!-- Отображение клеток и шашек -->
-        <Box v-for="(box, index) in boxesTitle" :key="index" :theme="toggleTheme(index)" @click="moveChecker(index)">
+        <Box v-for="(box, index) in boxesTitle" :key="index" :theme="toggleTheme(index)" @click.stop="selectedChecker() === index ? null : selectChecker(index)" :class="{ selected: selectedChecker() === index }" :validBox="isValidMoves().includes(index)" @click="moveChecker(index)">
           <!-- Если шашка существует, показываем ее и даем возможность выбрать -->
           <Checker v-if="checkersMap.get(index)"
                    :color="checkersMap.get(index)?.color"
@@ -75,12 +75,23 @@ class Board implements IBoard {
   grid: (Checker | null)[][];
   currentPlayer = 1; // 1 - белые, -1 - черные
   selectedChecker = 0;
+  validMoves = <number[]>([]);
   constructor() {
     // Создаем 8x8 сетку, изначально пустую
     this.grid = Array(8)
       .fill(null)
       .map(() => Array(8).fill(null));
   }
+
+
+  getValidMoves(): number[] {
+    return this.validMoves
+  }
+
+  setValidMoves(moves: number[]): void {
+    this.validMoves = moves
+  }
+
   getCurrentPlayer(): String{
     return this.currentPlayer === 1 ? 'white' : 'black';
   }
@@ -165,10 +176,14 @@ export default defineComponent({
             ]),
             checkersMap: reactive(new Map<number, { color: 'black' | 'white'; king: boolean } | null | undefined>()),
             //currentPlayer: ref<'black' | 'white'>('black'), // Хранит текущего игрока
-            logs: ref<string[]>([]) // Логи для отображения
+            logs: ref<string[]>([]), // Логи для отображения
+            //validMoves: ref<number[]>([])
           }        
     },
     methods:{
+        isValidMoves(){
+          return board.getValidMoves()
+        },
         toggleTheme(index: number){
             const BoardSize = 8
             const row =(Math.floor(index / BoardSize))
@@ -215,6 +230,7 @@ export default defineComponent({
             if (checker && checker.color === board.getCurrentPlayer()) {
                 // Если шашка принадлежит текущему игроку, то ее можно выбрать
                 board.setSelectedChecker(index);
+                board.setValidMoves(this.getValidMoves(index))// = this.getValidMoves(index);
                 this.addLog(`Игрок '${board.getCurrentPlayer()}' выбрал шашку на позиции ${this.getBoxTitle(index)}`);
             }else if (checker) {
                 this.addLog(`Шашка игрока '${checker.color}' не принадлежит текущему игроку.`);
@@ -224,7 +240,7 @@ export default defineComponent({
         // Логика перемещения шашки
         moveChecker(toIndex: number) {
             const fromIndex = board.getSelectedChecker();
-
+            board.setValidMoves(<number[]>([]))// = this.getValidMoves(fromIndex)
             if (fromIndex === null) {
                 this.addLog("Сначала выберите шашку.");
                 return; // Прекращаем выполнение, если шашка не выбрана
@@ -232,6 +248,12 @@ export default defineComponent({
 
             if (fromIndex !== null && this.isValidMove(fromIndex, toIndex)) {
                 const checker = this.checkersMap.get(fromIndex);
+
+                const eatenIndex = this.getEatenChecker(fromIndex, toIndex);
+                if (eatenIndex !== null) {
+                    this.checkersMap.set(eatenIndex, null); // Убираем съеденную шашку
+                    this.addLog(`Шашка на позиции ${this.getBoxTitle(eatenIndex)} была съедена.`);
+                }
 
                 // Перемещаем шашку на новое место
                 this.checkersMap.set(toIndex, checker);
@@ -248,6 +270,65 @@ export default defineComponent({
             }else if (fromIndex !== null) {
                 this.addLog("Невалидный ход.");
             }
+        },
+        getEatenChecker(fromIndex: number, toIndex: number): number | null {
+            const BoardSize = 8;
+            const fromRow = Math.floor(fromIndex / BoardSize);
+            const fromCol = fromIndex % BoardSize;
+            const toRow = Math.floor(toIndex / BoardSize);
+            const toCol = toIndex % BoardSize;
+
+            if (Math.abs(toRow - fromRow) === 2 && Math.abs(toCol - fromCol) === 2) {
+                const midRow = (fromRow + toRow) / 2;
+                const midCol = (fromCol + toCol) / 2;
+                const middleIndex = midRow * BoardSize + midCol;
+
+                const middleChecker = this.checkersMap.get(middleIndex);
+                const fromChecker = this.checkersMap.get(fromIndex);
+
+                if (middleChecker && middleChecker.color !== fromChecker?.color) {
+                    return middleIndex;
+                }
+            }
+            return null;
+        },
+        getValidMoves(index: number): number[] {
+            //console.log('Проверка валидных ходов для шашки на позиции', this.getBoxTitle(index))
+            const BoardSize = 8;
+            const row = Math.floor(index / BoardSize);
+            const col = index % BoardSize;
+            const checker = this.checkersMap.get(index);
+            const validMoves: number[] = [];
+            
+            if (!checker) return validMoves;
+
+            // Возможные направления для обычных шашек
+            const directions = checker.color === 'black' ? [[1, -1], [1, 1]] : [[-1, -1], [-1, 1]];
+
+            for (const [dRow, dCol] of directions) {
+                const newRow = row + dRow;
+                const newCol = col + dCol;
+                const newIndex = newRow * BoardSize + newCol;
+
+                // Проверяем стандартный ход
+                if (this.isValidMove(index, newIndex)) {
+                    validMoves.push(newIndex);
+                    
+                    console.log(`Добавлен стандартный ход на позицию ${this.getBoxTitle(newIndex)}`)
+                }
+
+                // Проверяем ход с поеданием
+                const jumpRow = row + 2 * dRow;
+                const jumpCol = col + 2 * dCol;
+                const jumpIndex = jumpRow * BoardSize + jumpCol;
+
+                if (this.getEatenChecker(index, jumpIndex)) {
+                    validMoves.push(jumpIndex);
+                    console.log('Возможный ход с поеданием на позицию', this.getBoxTitle(jumpIndex));
+                }
+            }
+
+            return validMoves;
         },
         // Проверка валидности хода
         isValidMove(fromIndex: number, toIndex: number): boolean {
@@ -278,7 +359,7 @@ export default defineComponent({
 
             // TODO: Добавить логику для дамок и прыжков через другие шашки
             
-            return false;
+            return this.getEatenChecker(fromIndex, toIndex) !== null;
         },
         // Получаем название клетки (A8, B7 и т.д.)
         getBoxTitle(index: number) {
@@ -332,6 +413,7 @@ export default defineComponent({
   .selected {
     border: 2px solid red;
   } 
+  
   .logs {
   width: 80%;
   background-color: #f0f0f0;
