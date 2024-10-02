@@ -7,6 +7,6 @@ WORKDIR /app
 COPY . .
 RUN npm install
 RUN npm install @vue/cli@5.0.8 -g
-EXPOSE 80
+EXPOSE 3000
 # start app
 CMD ["npm", "run", "serve"]
