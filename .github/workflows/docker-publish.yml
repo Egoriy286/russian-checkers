@@ -49,6 +49,6 @@ jobs:
           port: ${{ secrets.SERVER_SSH_PORT }}
           script: |
             docker pull ${{ steps.meta.outputs.tags }}
-            docker stop my-container || true
-            docker rm my-container || true
-            docker run -d -p 3000:3000 --restart=always --name my-container ${{ steps.meta.outputs.tags }}
+            docker stop vue-checkers-container || true
+            docker rm vue-checkers-container || true
+            docker run -d -p 3000:3000 --restart=always --name vue-checkers-container ${{ steps.meta.outputs.tags }}
